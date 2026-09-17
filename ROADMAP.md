@@ -3,7 +3,7 @@
 The goal is a small investigation system whose conclusions can be inspected and
 tested. A generated explanation alone is not evidence of correctness.
 
-## 1. Evidence-rich deterministic baseline
+## 1. Evidence-rich deterministic baseline — implemented
 
 - Collect structured synthetic logs and deployment changes alongside health and metrics.
 - Cite collected evidence for every finding.
@@ -12,7 +12,7 @@ tested. A generated explanation alone is not evidence of correctness.
 - Abstain when logs or changes do not support a specific explanation.
 - Keep collection read-only and bounded, with regression tests.
 
-## 2. Model-driven investigation
+## 2. Model-driven investigation — implemented, live validation pending
 
 - Introduce a model adapter separately from the existing deterministic policy.
 - Allow the model to select only explicitly registered read-only tools.
@@ -33,7 +33,7 @@ tested. A generated explanation alone is not evidence of correctness.
 
 ## 4. Presentation
 
-- Add CI for the offline suite and a reproducible quick start.
+- Offline CI and a reproducible quick start are implemented.
 - Record a short demonstration and explain an ambiguous case.
 - Document architecture, limitations, and AI-assisted implementation.
 - Add MCP through an existing SDK only when a concrete client needs it.
