@@ -10,7 +10,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 
-SCENARIOS = frozenset({"normal", "slow", "error", "unknown"})
+SCENARIOS = frozenset({"normal", "slow", "error", "release_regression", "unknown"})
 
 
 def scenario_payload(path: str, scenario: str) -> tuple[int, dict[str, Any]]:
@@ -22,18 +22,39 @@ def scenario_payload(path: str, scenario: str) -> tuple[int, dict[str, Any]]:
         "normal": (200, {"service": "orders", "status": "ok"}),
         "slow": (200, {"service": "orders", "status": "ok"}),
         "error": (500, {"service": "orders", "status": "error", "code": "UPSTREAM_TIMEOUT"}),
+        "release_regression": (500, {"service": "orders", "status": "error"}),
         "unknown": (200, {"service": "orders", "status": "unknown"}),
     }
     metrics = {
         "normal": {"service": "orders", "requests": 1000, "error_rate": 0.0, "p95_latency_ms": 18},
         "slow": {"service": "orders", "requests": 1000, "error_rate": 0.0, "p95_latency_ms": 240},
         "error": {"service": "orders", "requests": 1000, "error_rate": 0.16, "p95_latency_ms": 35},
+        "release_regression": {"service": "orders", "requests": 1000, "error_rate": 0.19, "p95_latency_ms": 42},
         "unknown": {"service": "orders", "requests": None, "error_rate": None, "p95_latency_ms": None},
     }
     if path == "/health":
         return health[scenario]
     if path == "/metrics":
         return 200, metrics[scenario]
+    logs = {
+        "normal": {"events": [{"timestamp": "2026-09-17T10:00:00Z", "level": "INFO", "event": "request_completed", "release": "2026.09.16.2"}]},
+        "slow": {"events": [{"timestamp": "2026-09-17T10:00:00Z", "level": "WARN", "event": "request_slow", "component": "orders"}]},
+        # The error scenario intentionally has no causal field or release correlation.
+        "error": {"events": [{"timestamp": "2026-09-17T10:00:00Z", "level": "ERROR", "event": "request_failed", "http_status": 500}]},
+        "release_regression": {"events": [{"timestamp": "2026-09-17T10:03:00Z", "level": "ERROR", "event": "request_failed", "error_code": "SCHEMA_VALIDATION_ERROR", "release": "2026.09.17.1"}]},
+        "unknown": {"events": []},
+    }
+    releases = {
+        "normal": {"current": "2026.09.16.2", "previous": "2026.09.15.4", "deployed_at": "2026-09-16T08:00:00Z", "changes": ["routine dependency update"]},
+        "slow": {"current": "2026.09.16.2", "previous": "2026.09.15.4", "deployed_at": "2026-09-16T08:00:00Z", "changes": ["routine dependency update"]},
+        "error": {"current": "2026.09.16.2", "previous": "2026.09.15.4", "deployed_at": "2026-09-16T08:00:00Z", "changes": ["routine dependency update"]},
+        "release_regression": {"current": "2026.09.17.1", "previous": "2026.09.16.2", "deployed_at": "2026-09-17T10:00:00Z", "changes": ["checkout schema validation"]},
+        "unknown": {"current": None, "previous": None, "deployed_at": None, "changes": []},
+    }
+    if path == "/logs":
+        return 200, logs[scenario]
+    if path == "/releases":
+        return 200, releases[scenario]
     return 404, {"error": "not found"}
 
 

@@ -29,11 +29,16 @@ class ToolBudgetExceeded(RuntimeError):
 
 
 class ReadOnlyTools:
-    """Permit only two fixed GET checks and enforce an investigation call budget."""
+    """Permit fixed read-only evidence checks and enforce a call budget."""
 
-    ALLOWED = {"health": "/health", "metrics": "/metrics"}
+    ALLOWED = {
+        "health": "/health",
+        "metrics": "/metrics",
+        "logs": "/logs",
+        "releases": "/releases",
+    }
 
-    def __init__(self, base_url: str, max_calls: int = 2, timeout_seconds: float = 1.0) -> None:
+    def __init__(self, base_url: str, max_calls: int = 4, timeout_seconds: float = 1.0) -> None:
         self.base_url = base_url.rstrip("/")
         self.max_calls = max_calls
         self.timeout_seconds = timeout_seconds

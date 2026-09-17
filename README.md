@@ -4,7 +4,7 @@ A small, reproducible backend incident investigation lab. The goal is to demonst
 
 ## MVP scope
 
-- Synthetic backend incidents: normal operation, slow responses, and server errors.
+- Synthetic backend incidents: normal operation, slow responses, server errors, and a release regression.
 - Structured evidence and read-only diagnostic tools.
 - A bounded investigation that cites evidence and can return insufficient evidence.
 - Offline, deterministic execution without API keys or paid services.
@@ -17,6 +17,7 @@ From this directory, with Python 3.10 or newer (no dependencies):
 
 ```sh
 python3 -m incident_investigator demo
+python3 -m incident_investigator demo --scenario release_regression
 python3 -m incident_investigator demo --scenario error
 python3 -m incident_investigator demo --scenario unknown
 python3 -m unittest discover -s tests -v
@@ -41,11 +42,20 @@ The diagnostic system observes a synthetic lab. It does not connect to productio
 `CLI → Investigator → ReadOnlyTools → localhost HTTP lab`
 
 The lab starts on an ephemeral loopback port and shuts down after each run.
-Reports contain observations, evidence IDs, timings, and the two tool calls.
-The health endpoint includes an actual delay in the slow scenario; metrics are
-synthetic fixtures, not production measurements. No logs or release history
-are collected yet. Network timeouts propagate to the caller; failed attempts
-consume the tool budget. A root cause is deliberately not inferred from symptoms.
+Reports contain observations, evidence IDs, timings, and four bounded tool calls:
+`health`, `metrics`, `logs`, and `releases`. The health endpoint includes an actual
+delay in the slow scenario; metrics, structured logs, and release history are
+synthetic fixtures, not production measurements.
+
+In `release_regression`, a schema-validation error names the current release,
+whose change list includes checkout schema validation. The fixed rule reports a
+**probable**, not proven, regression and cites both log and release evidence.
+In `error`, HTTP 500 is reported only as an observed symptom, without a causal
+diagnosis. Temporal proximity alone is not used to infer a cause.
+
+This is a narrow fixture-specific rule, not general root-cause analysis. Network
+timeouts propagate to the caller; failed attempts consume the tool budget.
+See [ROADMAP.md](ROADMAP.md) for the remaining milestones.
 
 This initial implementation was built with AI assistance and is being developed
 as a learning project, not presented as independently authored production work.

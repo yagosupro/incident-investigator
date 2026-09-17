@@ -42,8 +42,21 @@ class Investigator:
         # Fixed plan makes the access boundary auditable and naturally bounded.
         health = self.tools.collect("health", scenario)
         metrics = self.tools.collect("metrics", scenario)
-        evidence = [health, metrics]
+        logs = self.tools.collect("logs", scenario)
+        releases = self.tools.collect("releases", scenario)
+        evidence = [health, metrics, logs, releases]
         ids = [item.id for item in evidence]
+
+        diagnosis = self._release_diagnosis(logs, releases)
+        if diagnosis:
+            finding = Finding(diagnosis, "probable", [logs.id, releases.id])
+            return self._report(
+                scenario,
+                "probable_diagnosis",
+                "Evidence supports a probable release-related schema validation regression.",
+                [finding],
+                evidence,
+            )
 
         if health.http_status >= 500:
             finding = Finding(
@@ -84,9 +97,32 @@ class Investigator:
             summary=summary,
             findings=findings,
             limitations=[
-                "Only read-only /health and /metrics checks were used.",
-                "The deterministic offline policy does not infer a root cause beyond cited observations.",
+                "Only read-only /health, /metrics, /logs, and /releases checks were used.",
+                "A probable diagnosis requires matching structured log and release evidence; HTTP status alone is not treated as a cause.",
             ],
             evidence=evidence,
             tool_calls=list(self.tools.calls),
         )
+
+    @staticmethod
+    def _release_diagnosis(logs: Evidence, releases: Evidence) -> str | None:
+        """Return a bounded correlation claim only when both sources agree."""
+        current_release = releases.data.get("current")
+        changes = releases.data.get("changes")
+        events = logs.data.get("events")
+        if not isinstance(current_release, str) or not isinstance(changes, list) or not isinstance(events, list):
+            return None
+        for event in events:
+            if not isinstance(event, dict):
+                continue
+            if (
+                event.get("level") == "ERROR"
+                and event.get("release") == current_release
+                and event.get("error_code") == "SCHEMA_VALIDATION_ERROR"
+                and "checkout schema validation" in changes
+            ):
+                return (
+                    "A release-related checkout schema validation regression is probable: "
+                    "the current release is named in a matching structured error event."
+                )
+        return None
